@@ -13,7 +13,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link id="app-icon" rel="apple-touch-icon" sizes="180x180">
 <style>
 /* ============================================================
    GROVE — Theme tokens (Light + Obsidian + Forest Night + Ink)
@@ -3459,6 +3458,17 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+/* ============================================================
+   SERVICE WORKER — registers the PWA cache and offline shell
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.warn('SW registration failed:', err);
+    });
+  });
 }
 </script>
 
