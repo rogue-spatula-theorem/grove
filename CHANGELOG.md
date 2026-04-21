@@ -2,6 +2,29 @@
 
 ---
 
+## Session 6b — 21 April 2026 (PWA update-path hardening)
+**Status: sw.js v4 deployed. Network-first HTML, auto-activating workers, visible build marker.**
+
+### Why
+Session 6's v3 fix (re-added the missing SW registration) was correct but insufficient for users already running v1 on their homescreen: iOS Safari only checks for SW updates on background navigations, and v1's cache-first strategy meant even a successful update would keep serving stale HTML until the old cache expired.
+
+### Deployed in v4
+- **sw.js rewritten:** network-first for HTML / navigations (fresh `index.html` wins on every online load once v3/v4 is in control), cache-first for static assets. Install uses `cache: 'reload'` to bypass the HTTP cache.
+- **index.html SW registration upgraded:** `updatefound` listener auto-activates any newly-installed worker (`postMessage('SKIP_WAITING')`), a `controllerchange` listener triggers a one-shot reload so the new content appears without a manual refresh, plus an hourly `reg.update()` poll while the app is open.
+- **Visible build marker:** Settings footer now shows `Build: v4 · Check for update`. The link calls `forceUpdate()` which runs `reg.update()` and toasts the result.
+- **Bump to `grove-v4`** — old `grove-v3` caches are auto-deleted on activate.
+
+### Post-deploy live checks
+- `GET /sw.js` → `const CACHE = 'grove-v4'`, network-first body, last-modified 12:36 GMT ✓
+- `GET /index.html` → contains `GROVE_BUILD = 'v4'`, `function forceUpdate`, Settings build marker ✓
+- All 5 inline `<script>` blocks syntax-clean (node --check) ✓
+
+### Outstanding
+- Users still on v1 must trigger ONE background SW update check before v4 takes over (iOS does this automatically when the PWA is next opened with network access). After that, the reload loop is self-healing.
+- Viewport `maximum-scale=1,user-scalable=no` still violates WCAG 2.1 zoom. Low priority.
+
+---
+
 ## Session 6 — 21 April 2026 (ICT test pass)
 **Status: Audited v2 build. One critical fix deployed. PWA now actually offline-capable.**
 
