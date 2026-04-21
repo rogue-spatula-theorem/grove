@@ -2,6 +2,29 @@
 
 ---
 
+## Session 6 — 21 April 2026 (ICT test pass)
+**Status: Audited v2 build. One critical fix deployed. PWA now actually offline-capable.**
+
+### Fixed
+- **Critical: Service worker registration was missing.** `sw.js` was updated to v2 during the Session 5 rebuild but the `navigator.serviceWorker.register('./sw.js')` call was dropped from `index.html`. Result: the PWA wasn't actually installing a worker — no offline shell, no cache, no home-screen install with cached assets. Re-added the registration block at the bottom of `index.html`.
+- **Cache bump to `grove-v3`** so any previously-installed PWA picks up the fix on next load.
+- **Dead element removed:** `<link id="app-icon" rel="apple-touch-icon">` had no `href` and nothing referenced it — deleted.
+
+### Audited and cleared (no change)
+- JS syntax across all 5 `<script>` blocks (Node `--check` pass)
+- Inline handler → function resolution (0 unresolved)
+- Duplicate ID scan in static HTML (0 duplicates)
+- `innerHTML` interpolation XSS scan — all user fields pass through `esc()`; the one raw `${data.profile.name}` on the JSON-restore dialog is safe because `showDialog` uses `textContent`
+- Navigation flow: `navTab('followups')` is intercepted by the override at end of screens block and pushes via `pushScreen` + `renderFollowups` — works
+- MediaRecorder lifecycle: tracks released on stop
+- localStorage writes wrapped in try/catch with quota-exceeded toast
+
+### Outstanding (noted, not fixed)
+- Viewport has `maximum-scale=1, user-scalable=no` — intentional for iOS PWA feel but a WCAG 2.1 zoom violation. Low priority.
+- Supabase cloud sync, push notifications, real AI summarisation, real LinkedIn enrichment — all previously deferred.
+
+---
+
 ## Session 5 — 21 April 2026 (late evening)
 **Status: Major feature build + design polish. ~3,467 lines, 180KB. SW cache bumped to v2.**
 
