@@ -1,0 +1,6 @@
+.DS_Store
+.git-broken-*
+deploy/
+grove-design-package/
+grove-prototype.html
+CRM-Build-Prompt.md
