@@ -2329,7 +2329,10 @@ function renderSettings() {
         </div>
       </div>
 
-      <div style="text-align:center;font-size:11px;color:var(--text-3);padding:0 20px 30px">Grove · Personal CRM</div>
+      <div style="text-align:center;font-size:11px;color:var(--text-3);padding:0 20px 30px;line-height:1.7">
+        Grove · Personal CRM<br>
+        <span style="opacity:0.75">Build ${GROVE_BUILD} · <button class="tap" onclick="forceUpdate()" style="background:none;border:none;color:var(--green);font-size:11px;cursor:pointer;padding:0;text-decoration:underline">Check for update</button></span>
+      </div>
     </div>
   `;
   host.innerHTML = html;
@@ -3054,6 +3057,9 @@ function removeRelationship(contactId, otherId) {
 
 </script>
 <script>
+/* Build marker (declared early so it is live when renderSettings runs) */
+const GROVE_BUILD = 'v4';
+
 /* ============================================================
    IMPORT — VCF / CSV / Grove JSON backup
    ============================================================ */
@@ -3461,12 +3467,69 @@ if (document.readyState === 'loading') {
 }
 
 /* ============================================================
-   SERVICE WORKER — registers the PWA cache and offline shell
+   SERVICE WORKER REGISTRATION
+   - Auto-activate new workers
+   - Auto-reload once a new worker takes control
+   - Periodic background update check while app is open
+   - forceUpdate() triggers an on-demand SW update check
    ============================================================ */
+let _swReg = null;
+let _swReloading = false;
+
+function forceUpdate() {
+  if (!('serviceWorker' in navigator)) {
+    toast('PWA not available in this browser');
+    return;
+  }
+  toast('Checking for update…');
+  if (_swReg && _swReg.update) {
+    _swReg.update().then(() => {
+      setTimeout(() => {
+        // If no new worker appeared, let the user know they're current
+        if (!navigator.serviceWorker.controller || !_swReg.waiting) {
+          toast('Grove is up to date');
+        }
+      }, 1500);
+    }).catch(() => toast('Update check failed'));
+  } else {
+    // Hard reload bypassing cache as a fallback
+    location.reload();
+  }
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      _swReg = reg;
+
+      // If there's already a waiting worker, activate it
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        reg.waiting.postMessage('SKIP_WAITING');
+      }
+
+      // Listen for new workers installing and activate them
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            // New content is available — activate it now
+            nw.postMessage('SKIP_WAITING');
+          }
+        });
+      });
+
+      // Periodic background update check while the app is open
+      setInterval(() => { try { reg.update(); } catch (_) {} }, 60 * 60 * 1000);
+    }).catch(err => {
       console.warn('SW registration failed:', err);
+    });
+
+    // When the controlling worker changes (post-skipWaiting), reload once
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_swReloading) return;
+      _swReloading = true;
+      location.reload();
     });
   });
 }
